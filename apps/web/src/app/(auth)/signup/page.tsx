@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils"
 
 // Auth APIs and Context
 import { useAuth } from "@/contexts/auth-context"
-import { signupUser } from "@/api/auth"
+import { signupUser, socialAuth } from "@/api/auth"
 import type { SignupRequest, ApiError } from "@/api/auth/types"
 import { toast } from "sonner"
 
@@ -131,20 +131,14 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
                 // Get Firebase ID token and send to backend
                 const idToken = await user.getIdToken()
                 
-                // Call backend API for social auth signup
-                const response = await fetch('/api/auth/social', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        provider: 'google',
-                        idToken: idToken,
-                        isSignup: true
-                    })
+                // Call backend API for social auth signup using the proper API function
+                const response = await socialAuth({
+                    provider: 'google',
+                    idToken: idToken,
+                    isSignup: true
                 })
                 
-                if (response.ok) {
+                if (response.success) {
                     toast.success("Account created successfully", {
                         description: "Welcome! Redirecting to dashboard...",
                     })

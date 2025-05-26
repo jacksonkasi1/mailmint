@@ -4,7 +4,6 @@ import { Hono } from 'hono'
 import { createUserRoute } from './create'
 // ** Routes
 import { getUsersRoute } from './get'
-import { getUserByIdRoute } from './get-by-id'
 import { updateUserRoute } from './update'
 
 /**
@@ -18,5 +17,4 @@ userRoutes.route('/', createUserRoute)
 userRoutes.route('/', getUsersRoute)
 
 // Register the ID-based routes
-userRoutes.route('/:id', getUserByIdRoute)
 userRoutes.route('/:id', updateUserRoute)

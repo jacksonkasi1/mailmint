@@ -1,6 +1,5 @@
-// Firebase configuration and initialization
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth, connectAuthEmulator } from 'firebase/auth'
+import { getAuth } from 'firebase/auth'
 import { getAnalytics } from 'firebase/analytics'
 
 const firebaseConfig = {
@@ -13,22 +12,20 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 }
 
+// Validate required config
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  throw new Error('Missing required Firebase configuration. Please check your environment variables.')
+}
+
 // Initialize Firebase only if it hasn't been initialized already
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
 
 // Initialize Firebase Auth
 export const auth = getAuth(app)
 
-// Initialize Analytics (only in browser environment)
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null
-
-// Connect to Auth Emulator in development
-if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-  try {
-    connectAuthEmulator(auth, 'http://localhost:9099')
-  } catch (error) {
-    console.log('Auth emulator connection failed:', error)
-  }
-}
+// Initialize Analytics (only in browser environment and if measurementId is provided)
+export const analytics = typeof window !== 'undefined' && firebaseConfig.measurementId 
+  ? getAnalytics(app) 
+  : null
 
 export default app

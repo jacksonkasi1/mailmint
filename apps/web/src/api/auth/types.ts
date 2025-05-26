@@ -46,6 +46,7 @@ export interface SignupRequest {
   export interface SocialAuthRequest {
     provider: 'google' | 'apple'
     idToken: string
+    isSignup?: boolean
   }
   
   export interface RefreshTokenRequest {

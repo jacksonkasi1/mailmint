@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils"
 
 // Auth APIs and Context
 import { useAuth } from "@/contexts/auth-context"
-import { loginUser } from "@/api/auth"
+import { loginUser, socialAuth } from "@/api/auth"
 import type { LoginRequest, ApiError } from "@/api/auth/types"
 import { toast } from "sonner"
 
@@ -112,19 +112,13 @@ export default function LoginPage({ className, ...props }: LoginPageProps) {
                 // Get Firebase ID token and send to backend
                 const idToken = await user.getIdToken()
                 
-                // Call backend API for social auth
-                const response = await fetch('/api/auth/social', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        provider: 'google',
-                        idToken: idToken
-                    })
+                // Call backend API for social auth using the proper API function
+                const response = await socialAuth({
+                    provider: 'google',
+                    idToken: idToken
                 })
                 
-                if (response.ok) {
+                if (response.success) {
                     toast.success("Login successful", {
                         description: "Welcome! Redirecting to dashboard...",
                     })

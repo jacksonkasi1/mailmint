@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  sendEmailVerification,
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
@@ -23,6 +24,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<User>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  resendEmailVerification: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -51,6 +53,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (displayName && userCredential.user) {
       await updateProfile(userCredential.user, { displayName })
     }
+    
+    // Send email verification
+    await sendEmailVerification(userCredential.user)
     
     // Set auth cookie for middleware
     const token = await userCredential.user.getIdToken()
@@ -98,6 +103,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await sendPasswordResetEmail(auth, email)
   }
 
+  // Resend email verification
+  const resendEmailVerification = async (): Promise<void> => {
+    if (user) {
+      await sendEmailVerification(user)
+    } else {
+      throw new Error('No user is currently signed in')
+    }
+  }
+
   // Listen for authentication state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -129,6 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signInWithGoogle,
     logout,
     resetPassword,
+    resendEmailVerification,
   }
 
   return (

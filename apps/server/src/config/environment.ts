@@ -8,6 +8,10 @@ export interface EnvironmentConfig {
   FUNCTION_MEMORY: string | undefined
   LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error'
   MAX_REQUEST_SIZE: string
+  // Firebase Configuration
+  FIREBASE_PROJECT_ID: string
+  FIREBASE_PRIVATE_KEY: string
+  FIREBASE_CLIENT_EMAIL: string
 }
 
 // Environment validation
@@ -26,6 +30,21 @@ const validateEnvironment = (): EnvironmentConfig => {
     throw new Error('PORT must be a valid port number between 1 and 65535')
   }
 
+  // Validate Firebase environment variables
+  const firebaseProjectId = process.env.FIREBASE_PROJECT_ID
+  const firebasePrivateKey = process.env.FIREBASE_PRIVATE_KEY
+  const firebaseClientEmail = process.env.FIREBASE_CLIENT_EMAIL
+
+  if (!firebaseProjectId) {
+    throw new Error('FIREBASE_PROJECT_ID environment variable is required')
+  }
+  if (!firebasePrivateKey) {
+    throw new Error('FIREBASE_PRIVATE_KEY environment variable is required')
+  }
+  if (!firebaseClientEmail) {
+    throw new Error('FIREBASE_CLIENT_EMAIL environment variable is required')
+  }
+
   return {
     NODE_ENV: nodeEnv,
     PORT: port,
@@ -36,6 +55,10 @@ const validateEnvironment = (): EnvironmentConfig => {
     LOG_LEVEL:
       (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') || getDefaultLogLevel(nodeEnv),
     MAX_REQUEST_SIZE: process.env.MAX_REQUEST_SIZE || '10mb',
+    // Firebase Configuration
+    FIREBASE_PROJECT_ID: firebaseProjectId,
+    FIREBASE_PRIVATE_KEY: firebasePrivateKey,
+    FIREBASE_CLIENT_EMAIL: firebaseClientEmail,
   }
 }
 
