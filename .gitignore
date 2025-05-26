@@ -6,3 +6,5 @@ node_modules
 .env.development
 
 deploy-credential.json
+
+firebase-service-account.json
