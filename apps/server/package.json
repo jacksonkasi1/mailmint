@@ -1,0 +1,57 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "TypeScript-based application using Hono.js framework for GCP Cloud Run with CORS support",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "cross-env NODE_ENV=development tsx watch src/index.ts",
+    "dev:prod": "cross-env NODE_ENV=production tsx watch src/index.ts",
+    "build": "tsc && tsc-alias",
+    "build:watch": "tsc --watch",
+    "test": "echo 'Tests not implemented yet'",
+    "lint": "biome lint src/",
+    "lint:fix": "biome lint --write src/",
+    "format": "biome format src/",
+    "format:fix": "biome format --write src/",
+    "check": "biome check src/",
+    "check:fix": "biome check --write src/",
+    "validate": "bash scripts/validate.sh",
+    "fix:permissions": "bash scripts/fix-build-permissions.sh",
+    "deploy:dev": "bash scripts/deploy-simple.sh development",
+    "deploy:prod": "bash scripts/deploy-simple.sh production",
+    "test:api": "bash scripts/test-api.sh",
+    "test:api:dev": "bash scripts/test-api.sh development",
+    "test:api:prod": "bash scripts/test-api.sh production"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.8.0",
+    "@hono/zod-validator": "^0.5.0",
+    "dotenv": "^16.4.5",
+    "hono": "^4.0.0",
+    "zod": "^3.25.28",
+    "@repo/logs": "workspace:^"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/node": "^20.17.50",
+    "cross-env": "^7.0.3",
+    "tsc-alias": "^1.8.16",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "cloud-run",
+    "gcp",
+    "containerized",
+    "cloud-build",
+    "hono",
+    "nodejs",
+    "typescript"
+  ],
+  "author": "Jackson Kasi",
+  "license": "MIT"
+}
