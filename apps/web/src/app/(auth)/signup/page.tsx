@@ -3,11 +3,12 @@
 import { useState } from "react"
 import type React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 
-import { GalleryVerticalEnd, EyeIcon, EyeOffIcon, Loader2, CheckCircle2 } from "lucide-react"
+import { GalleryVerticalEnd, EyeIcon, EyeOffIcon, Loader2, CheckCircle2, Mail, User } from "lucide-react"
 import { AppleIcon, GoogleIcon } from "@/components/icons"
 
 // Shadcn UI Components
@@ -21,25 +22,36 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // Utils
 import { cn } from "@/lib/utils"
 
-// Form validation schema
+// Auth APIs and Context
+import { useAuth } from "@/contexts/auth-context"
+import { signupUser } from "@/api/auth"
+import type { SignupRequest, ApiError } from "@/api/auth/types"
+import { toast } from "sonner"
+
+// Form validation schema for signup
 const signupSchema = z.object({
-    fullName: z.string()
-        .min(2, "Full name must be at least 2 characters")
-        .max(50, "Full name must be less than 50 characters")
-        .regex(/^[a-zA-Z\s]+$/, "Full name can only contain letters and spaces"),
+    firstName: z.string()
+        .min(1, "First name is required")
+        .min(2, "First name must be at least 2 characters"),
+    lastName: z.string()
+        .min(1, "Last name is required")
+        .min(2, "Last name must be at least 2 characters"),
     email: z.string()
         .email("Please enter a valid email address")
         .min(1, "Email is required"),
     password: z.string()
+        .min(1, "Password is required")
         .min(8, "Password must be at least 8 characters")
-        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-            "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"),
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
     confirmPassword: z.string()
         .min(1, "Please confirm your password"),
+    termsAccepted: z.boolean()
+        .refine(val => val === true, "You must accept the terms and conditions"),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -53,14 +65,19 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    
+    const router = useRouter()
+    const { signUp, signInWithGoogle } = useAuth()
 
     const form = useForm<SignupFormData>({
         resolver: zodResolver(signupSchema),
         defaultValues: {
-            fullName: "",
+            firstName: "",
+            lastName: "",
             email: "",
             password: "",
             confirmPassword: "",
+            termsAccepted: false,
         },
         mode: "onChange", // Enable real-time validation
     })
@@ -68,13 +85,38 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
     const onSubmit = async (data: SignupFormData) => {
         setIsLoading(true)
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            console.log("Signup data:", data)
-            // Handle successful signup
-        } catch (error) {
+            // Step 1: Create user in Firebase
+            const displayName = `${data.firstName} ${data.lastName}`
+            await signUp(data.email, data.password, displayName)
+            
+            // Step 2: Send signup data to backend API
+            const signupData: SignupRequest = {
+                email: data.email,
+                password: data.password,
+                firstName: data.firstName,
+                lastName: data.lastName,
+            }
+            
+            const response = await signupUser(signupData)
+            
+            if (response.success) {
+                toast.success("Account created successfully", {
+                    description: "Welcome! Please check your email to verify your account.",
+                })
+                
+                // Redirect to email verification page or dashboard
+                router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
+            } else {
+                throw new Error(response.message || 'Signup failed')
+            }
+        } catch (error: any) {
             console.error("Signup error:", error)
-            // Handle error
+            
+            const errorMessage = error.message || 'An error occurred during signup'
+            
+            toast.error("Signup failed", {
+                description: errorMessage,
+            })
         } finally {
             setIsLoading(false)
         }
@@ -83,11 +125,44 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
     const handleSocialAuth = async (provider: 'apple' | 'google') => {
         setIsLoading(true)
         try {
-            // Simulate social auth
-            await new Promise(resolve => setTimeout(resolve, 1500))
-            console.log(`${provider} auth initiated`)
-        } catch (error) {
+            if (provider === 'google') {
+                const user = await signInWithGoogle()
+                
+                // Get Firebase ID token and send to backend
+                const idToken = await user.getIdToken()
+                
+                // Call backend API for social auth signup
+                const response = await fetch('/api/auth/social', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        provider: 'google',
+                        idToken: idToken,
+                        isSignup: true
+                    })
+                })
+                
+                if (response.ok) {
+                    toast.success("Account created successfully", {
+                        description: "Welcome! Redirecting to dashboard...",
+                    })
+                    router.push('/dashboard')
+                } else {
+                    throw new Error('Social authentication failed')
+                }
+            } else {
+                // Apple auth implementation would go here
+                toast.success("Coming soon", {
+                    description: "Apple Sign-In will be available soon.",
+                })
+            }
+        } catch (error: any) {
             console.error(`${provider} auth error:`, error)
+            toast.error("Authentication failed", {
+                description: `Failed to sign up with ${provider}. Please try again.`,
+            })
         } finally {
             setIsLoading(false)
         }
@@ -132,33 +207,53 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
-                        {/* Full Name Field */}
-                        <FormField
-                            control={form.control}
-                            name="fullName"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-sm font-medium text-foreground">
-                                        Full Name
-                                    </FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
+                        {/* Name Fields */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="firstName"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-sm font-medium text-foreground">
+                                            First Name
+                                        </FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    {...field}
+                                                    placeholder="John"
+                                                    className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                                                    disabled={isLoading}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="lastName"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-sm font-medium text-foreground">
+                                            Last Name
+                                        </FormLabel>
+                                        <FormControl>
                                             <Input
                                                 {...field}
-                                                type="text"
-                                                placeholder="John Doe"
-                                                className="pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                                                placeholder="Doe"
+                                                className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                                                 disabled={isLoading}
                                             />
-                                            {form.getValues("fullName") && !form.formState.errors.fullName && (
-                                                <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-500" />
-                                            )}
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage className="text-xs" />
-                                </FormItem>
-                            )}
-                        />
+                                        </FormControl>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
 
                         {/* Email Field */}
                         <FormField
@@ -171,11 +266,12 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
                                     </FormLabel>
                                     <FormControl>
                                         <div className="relative">
+                                            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                             <Input
                                                 {...field}
                                                 type="email"
-                                                placeholder="m@example.com"
-                                                className="pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                                                placeholder="john@example.com"
+                                                className="pl-10 pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                                                 disabled={isLoading}
                                             />
                                             {form.getValues("email") && !form.formState.errors.email && (
@@ -202,7 +298,7 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
                                             <Input
                                                 {...field}
                                                 type={showPassword ? "text" : "password"}
-                                                placeholder="Enter your password"
+                                                placeholder="Create a strong password"
                                                 className="pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                                                 disabled={isLoading}
                                             />
@@ -272,6 +368,42 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
                             )}
                         />
 
+                        {/* Terms Acceptance Checkbox */}
+                        <FormField
+                            control={form.control}
+                            name="termsAccepted"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            disabled={isLoading}
+                                            className="mt-0.5"
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel className="cursor-pointer text-sm font-normal text-foreground">
+                                            I agree to the{" "}
+                                            <Link
+                                                href="/terms"
+                                                className="font-medium text-primary underline-offset-4 transition-colors hover:underline focus:underline focus:outline-none"
+                                            >
+                                                Terms of Service
+                                            </Link>{" "}
+                                            and{" "}
+                                            <Link
+                                                href="/privacy"
+                                                className="font-medium text-primary underline-offset-4 transition-colors hover:underline focus:underline focus:outline-none"
+                                            >
+                                                Privacy Policy
+                                            </Link>
+                                        </FormLabel>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
                         {/* Submit Button */}
                         <Button
                             type="submit"
@@ -281,10 +413,10 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
                             {isLoading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Creating Account...
+                                    Creating account...
                                 </>
                             ) : (
-                                "Create Account"
+                                "Create account"
                             )}
                         </Button>
                     </form>
@@ -332,25 +464,6 @@ export default function SignupPage({ className, ...props }: SignupPageProps) {
                             </>
                         )}
                     </Button>
-                </div>
-
-                {/* Terms and Privacy */}
-                <div className="text-center text-xs leading-relaxed text-muted-foreground">
-                    By creating an account, you agree to our{" "}
-                    <Link
-                        href="/terms"
-                        className="font-medium text-primary underline-offset-4 transition-colors hover:underline focus:underline focus:outline-none"
-                    >
-                        Terms of Service
-                    </Link>{" "}
-                    and{" "}
-                    <Link
-                        href="/privacy"
-                        className="font-medium text-primary underline-offset-4 transition-colors hover:underline focus:underline focus:outline-none"
-                    >
-                        Privacy Policy
-                    </Link>
-                    .
                 </div>
             </div>
         </div>

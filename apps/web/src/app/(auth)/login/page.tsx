@@ -3,6 +3,7 @@
 import { useState } from "react"
 import type React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -26,6 +27,12 @@ import { Checkbox } from "@/components/ui/checkbox"
 // Utils
 import { cn } from "@/lib/utils"
 
+// Auth APIs and Context
+import { useAuth } from "@/contexts/auth-context"
+import { loginUser } from "@/api/auth"
+import type { LoginRequest, ApiError } from "@/api/auth/types"
+import { toast } from "sonner"
+
 // Form validation schema - Fixed the rememberMe field
 const loginSchema = z.object({
     email: z.string()
@@ -45,6 +52,9 @@ export default function LoginPage({ className, ...props }: LoginPageProps) {
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
+    const router = useRouter()
+    const { signIn, signInWithGoogle } = useAuth()
+
     const form = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
         defaultValues: {
@@ -58,13 +68,36 @@ export default function LoginPage({ className, ...props }: LoginPageProps) {
     const onSubmit = async (data: LoginFormData) => {
         setIsLoading(true)
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            console.log("Login data:", data)
-            // Handle successful login
-        } catch (error) {
+            // Step 1: Authenticate with Firebase
+            await signIn(data.email, data.password)
+            
+            // Step 2: Send login data to backend API
+            const loginData: LoginRequest = {
+                email: data.email,
+                password: data.password,
+                rememberMe: data.rememberMe
+            }
+            
+            const response = await loginUser(loginData)
+            
+            if (response.success) {
+                toast.success("Login successful", {
+                    description: "Welcome back! Redirecting to dashboard...",
+                })
+                
+                // Redirect to dashboard
+                router.push('/dashboard')
+            } else {
+                throw new Error(response.message || 'Login failed')
+            }
+        } catch (error: any) {
             console.error("Login error:", error)
-            // Handle error
+            
+            const errorMessage = error.message || 'An error occurred during login'
+            
+            toast.error("Login failed", {
+                description: errorMessage,
+            })
         } finally {
             setIsLoading(false)
         }
@@ -73,11 +106,43 @@ export default function LoginPage({ className, ...props }: LoginPageProps) {
     const handleSocialAuth = async (provider: 'apple' | 'google') => {
         setIsLoading(true)
         try {
-            // Simulate social auth
-            await new Promise(resolve => setTimeout(resolve, 1500))
-            console.log(`${provider} auth initiated`)
-        } catch (error) {
+            if (provider === 'google') {
+                const user = await signInWithGoogle()
+                
+                // Get Firebase ID token and send to backend
+                const idToken = await user.getIdToken()
+                
+                // Call backend API for social auth
+                const response = await fetch('/api/auth/social', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        provider: 'google',
+                        idToken: idToken
+                    })
+                })
+                
+                if (response.ok) {
+                    toast.success("Login successful", {
+                        description: "Welcome! Redirecting to dashboard...",
+                    })
+                    router.push('/dashboard')
+                } else {
+                    throw new Error('Social authentication failed')
+                }
+            } else {
+                // Apple auth implementation would go here
+                toast.success("Coming soon", {
+                    description: "Apple Sign-In will be available soon.",
+                })
+            }
+        } catch (error: any) {
             console.error(`${provider} auth error:`, error)
+            toast.error("Authentication failed", {
+                description: `Failed to sign in with ${provider}. Please try again.`,
+            })
         } finally {
             setIsLoading(false)
         }
@@ -85,7 +150,7 @@ export default function LoginPage({ className, ...props }: LoginPageProps) {
 
     const handleForgotPassword = () => {
         // Handle forgot password
-        console.log("Forgot password clicked")
+        router.push('/forgot-password')
     }
 
     return (
