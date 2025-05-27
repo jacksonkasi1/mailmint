@@ -2,6 +2,8 @@ import { initializeApp, getApps, cert, type App } from 'firebase-admin/app'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { env, isDevelopment } from './environment'
 import { logger } from '@repo/logs'
+import * as path from 'path'
+import * as fs from 'fs'
 
 let firebaseApp: App
 let firebaseAuth: Auth
@@ -16,16 +18,38 @@ const initializeFirebaseAdmin = (): void => {
       return
     }
 
-    // Initialize Firebase Admin with service account from environment configuration
-    const serviceAccount = {
-      projectId: env.FIREBASE_PROJECT_ID,
-      privateKey: env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      clientEmail: env.FIREBASE_CLIENT_EMAIL,
+    // Try to use service account file first, then fallback to environment variables
+    let credential
+    const serviceAccountPath = path.join(process.cwd(), 'firebase-service-account.json')
+    
+    if (fs.existsSync(serviceAccountPath)) {
+      // Use service account file
+      logger.info('Using Firebase service account file for authentication')
+      credential = cert(serviceAccountPath)
+    } else {
+      // Fallback to environment variables
+      logger.info('Using Firebase environment variables for authentication')
+      
+      // Validate that we have the required environment variables
+      if (!env.FIREBASE_PROJECT_ID || !env.FIREBASE_PRIVATE_KEY || !env.FIREBASE_CLIENT_EMAIL) {
+        throw new Error('Missing required Firebase environment variables')
+      }
+
+      // Validate private key format
+      const privateKey = env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+      if (!privateKey.includes('-----BEGIN PRIVATE KEY-----') || !privateKey.includes('-----END PRIVATE KEY-----')) {
+        throw new Error('Invalid private key format. Ensure the private key includes proper PEM headers and footers.')
+      }      const serviceAccount = {
+        projectId: env.FIREBASE_PROJECT_ID,
+        privateKey: privateKey,
+        clientEmail: env.FIREBASE_CLIENT_EMAIL,
+      }
+      credential = cert(serviceAccount)
     }
 
     firebaseApp = initializeApp({
-      credential: cert(serviceAccount),
-      projectId: env.FIREBASE_PROJECT_ID
+      credential: credential,
+      projectId: env.FIREBASE_PROJECT_ID || 'invox-8f1f3'
     })
 
     firebaseAuth = getAuth(firebaseApp)
