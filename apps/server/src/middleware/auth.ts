@@ -92,16 +92,17 @@ export const optionalAuthMiddleware = async (c: Context, next: Next) => {
     
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '').trim()
-      
-      if (token) {
+        if (token) {
         const verificationResult = await verifyFirebaseToken(token)
-        
-        if (verificationResult.success) {
+          if (verificationResult.success && verificationResult.uid) {
           c.set('user', {
             uid: verificationResult.uid,
             email: verificationResult.email,
             emailVerified: verificationResult.emailVerified,
-            ...verificationResult.user
+            // Spread user data but exclude uid to avoid duplication
+            ...Object.fromEntries(
+              Object.entries(verificationResult.user).filter(([key]) => key !== 'uid')
+            )
           })
         }
       }
