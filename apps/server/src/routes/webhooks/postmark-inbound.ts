@@ -2,9 +2,6 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { logger } from "@repo/logs";
 
-// Create Postmark webhook routes
-const postmarkInboundWebhook = new Hono();
-
 // Postmark webhook payload types
 interface PostmarkAttachment {
   Name: string;
@@ -123,6 +120,9 @@ function parsePostmarkPayload(payload: PostmarkWebhookPayload): RawEmail {
   };
 }
 
+// Create Postmark webhook routes
+const postmarkInboundWebhook = new Hono();
+
 /**
  * POST /webhooks/postmark/inbound
  * Receive and process inbound emails from Postmark
@@ -199,15 +199,10 @@ postmarkInboundWebhook.post("/inbound", async (c: Context) => {
     
     logger.error("Failed to process Postmark webhook", {
       error: error instanceof Error ? error.message : String(error),
-      processingTime: `${processingTime}ms`
+      processingTime: `${processingTime}ms`,
+      stack: error instanceof Error ? error.stack : undefined
     });
 
-    console.error("=== WEBHOOK ERROR ===");
-    console.error("Error:", error instanceof Error ? error.message : String(error));
-    console.error("Processing Time:", `${processingTime}ms`);
-    console.error("====================");
-
-    // Always return 200 to prevent Postmark from retrying
     // Log the error but don't fail the webhook delivery
     return c.json({ 
       success: false, 
