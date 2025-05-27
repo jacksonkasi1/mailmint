@@ -2,10 +2,10 @@
 
 
 ## 0 │ Foundation & Repo Bootstrap
-- [ ] Create **`services/mailmint-api`** directory in mono-repo
-- [ ] Initialise PNPM / Yarn work-space, ESLint, Prettier, Husky, Commitlint
-- [ ] Add shared **env** loader (dotenv-expand) + typing
-- [ ] Add CI pipeline (Cloud Build YAML) to build & deploy to Cloud Run
+- [x] Create **`app/server`** directory in mono-repo
+- [x] Initialise PNPM work-space, ESLint, Prettier, Husky, Commitlint
+- [x] Add shared **env** loader (dotenv-expand) + typing
+
 
 ---
 
