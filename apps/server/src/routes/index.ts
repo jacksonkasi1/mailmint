@@ -5,6 +5,7 @@ import type { Context } from "hono";
 // ** Routes
 import { userRoutes } from "./user";
 import { authRoutes } from "./auth";
+import { webhookRoutes } from "./webhooks";
 
 // ** Config
 import { env } from "@/config/environment";
@@ -51,5 +52,6 @@ routes.get("/", (c: Context) => {
 // Mount sub-routes
 routes.route("/api/auth", authRoutes);
 routes.route("/api/users", userRoutes);
+routes.route("/webhooks", webhookRoutes);
 
 export { routes };
