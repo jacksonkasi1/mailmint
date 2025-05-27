@@ -8,3 +8,5 @@ node_modules
 deploy-credential.json
 
 firebase-service-account.json
+
+dist
