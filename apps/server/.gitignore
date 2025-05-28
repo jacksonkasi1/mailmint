@@ -1,0 +1,12 @@
+node_modules
+.turbo
+
+# Environment variables
+# .env.production
+# .env.development
+
+# deploy-credential.json
+
+# firebase-service-account.json
+
+# dist
