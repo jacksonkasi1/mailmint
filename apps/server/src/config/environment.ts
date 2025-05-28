@@ -12,6 +12,17 @@ export interface EnvironmentConfig {
   FIREBASE_PROJECT_ID: string
   FIREBASE_PRIVATE_KEY: string
   FIREBASE_CLIENT_EMAIL: string
+  // Postmark Configuration
+  POSTMARK_ACCOUNT_TOKEN: string
+  POSTMARK_SERVER_TOKEN: string
+  POSTMARK_WEBHOOK_SECRET?: string
+  POSTMARK_INBOUND_HASH?: string
+  POSTMARK_WEBHOOK_URL?: string
+  // Database Configuration
+  MONGODB_URI: string
+  // Google Cloud Storage Configuration
+  GCS_BUCKET_NAME: string
+  GCS_PROJECT_ID: string
 }
 
 // Environment validation
@@ -45,6 +56,34 @@ const validateEnvironment = (): EnvironmentConfig => {
     throw new Error('FIREBASE_CLIENT_EMAIL environment variable is required')
   }
 
+  // Validate Postmark environment variables
+  const postmarkAccountToken = process.env.POSTMARK_ACCOUNT_TOKEN
+  const postmarkServerToken = process.env.POSTMARK_SERVER_TOKEN
+
+  if (!postmarkAccountToken) {
+    throw new Error('POSTMARK_ACCOUNT_TOKEN environment variable is required')
+  }
+  if (!postmarkServerToken) {
+    throw new Error('POSTMARK_SERVER_TOKEN environment variable is required')
+  }
+
+  // Validate MongoDB URI
+  const mongoDbUri = process.env.MONGODB_URI
+  if (!mongoDbUri) {
+    throw new Error('MONGODB_URI environment variable is required')
+  }
+
+  // Validate Google Cloud Storage configuration
+  const gcsBucketName = process.env.GCS_BUCKET_NAME
+  const gcsProjectId = process.env.GCS_PROJECT_ID
+
+  if (!gcsBucketName) {
+    throw new Error('GCS_BUCKET_NAME environment variable is required')
+  }
+  if (!gcsProjectId) {
+    throw new Error('GCS_PROJECT_ID environment variable is required')
+  }
+
   return {
     NODE_ENV: nodeEnv,
     PORT: port,
@@ -59,6 +98,17 @@ const validateEnvironment = (): EnvironmentConfig => {
     FIREBASE_PROJECT_ID: firebaseProjectId,
     FIREBASE_PRIVATE_KEY: firebasePrivateKey,
     FIREBASE_CLIENT_EMAIL: firebaseClientEmail,
+    // Postmark Configuration
+    POSTMARK_ACCOUNT_TOKEN: postmarkAccountToken,
+    POSTMARK_SERVER_TOKEN: postmarkServerToken,
+    POSTMARK_WEBHOOK_SECRET: process.env.POSTMARK_WEBHOOK_SECRET,
+    POSTMARK_INBOUND_HASH: process.env.POSTMARK_INBOUND_HASH,
+    POSTMARK_WEBHOOK_URL: process.env.POSTMARK_WEBHOOK_URL,
+    // Database Configuration
+    MONGODB_URI: mongoDbUri,
+    // Google Cloud Storage Configuration
+    GCS_BUCKET_NAME: gcsBucketName,
+    GCS_PROJECT_ID: gcsProjectId,
   }
 }
 
